@@ -46,13 +46,19 @@ while (hasMore) {
     }
   );
 
+  if (res.status !== 200) {
+    console.log(res.status);
+    console.log(await res.text());
+    throw new Error("Failed to fetch logs");
+  }
+
   const data = await res.json();
 
   const { hasNext, logs, nextCursor } = data[0].result.data.json;
 
   // If first request, write collumn names
   if (cursor === null) {
-    await fs.writeFile("logs.csv", `${Object.keys(logs[0]).join(",")}\n`);
+    await fs.writeFile("logs.csv", `id,userId,event,description,timestamp\n`);
   }
 
   hasMore = hasNext;
@@ -63,13 +69,15 @@ while (hasMore) {
   for (const log of logs) {
     const { id, userId, event, description, timestamp } = log;
     lines.push(`${id},${userId},${event},${description},${timestamp}`);
+
+    console.log(lines[lines.length - 1]);
   }
 
   // Trottle to avoid spamming Logsnag API
   await new Promise((r) => setTimeout(r, 300));
 
   // Append lines to logs.csv
-  await fs.appendFile("logs.csv", lines.join("\n"));
+  await fs.appendFile("logs.csv", lines.join("\n") + "\n");
 
   console.log(`Parsed ${lines.length} logs at cursor: ${cursor}`);
 }
